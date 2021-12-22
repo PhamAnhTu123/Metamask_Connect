@@ -1,14 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-import { CssBaseline, Box, TextField, Button, Container, Stack } from '@mui/material';
+import { CssBaseline, Box, TextField, Button, Container, Stack, Typography } from '@mui/material';
 
-import { ethers } from 'ethers';
+import { ethers, providers } from 'ethers';
 
 import erc20abi from './erc20abi.json';
+
+import WalletConnectProvider from "@walletconnect/web3-provider";
+
+//  Create WalletConnect Provider
+const provider = new WalletConnectProvider({
+  infuraId: process.env.REACT_APP_INFURA_ID,
+});
+
+const web3Provider = new providers.Web3Provider(provider);
+
+const connectWallet = async () => {
+    //  Enable session (triggers QR Code modal)
+    await provider.enable();
+}
+
+const disconnectWallet = async () => {
+  //  Enable session (triggers QR Code modal)
+  await provider.disconnect();
+}
 
 
 function App() {
   const [user, setUser] = useState('');
+  const [wallet, setWallet] = useState('');
+  
+
+  provider.on("accountsChanged", (accounts) => {
+    setWallet(accounts[0]);
+  });
+
+  provider.on("disconnect", (code, reason) => {
+    setWallet('account disconnected')
+  });
 
   const handleConnect = async () => {
     try {
@@ -37,7 +66,7 @@ function App() {
         params: [
           {
             from: user,
-            to: '0xEc6AC176057cB44e382f14004aE2B4271aeFfdF2',
+            to: process.env.REACT_APP_ETH_SENDER,
             value: hexValue._hex,
           },
         ],
@@ -50,9 +79,9 @@ function App() {
         params: [
           {
             from: user,
-            to: '0xEc6AC176057cB44e382f14004aE2B4271aeFfdF2',
+            to: process.env.REACT_APP_ETH_SENDER,
             value: hexValue._hex,
-            data: '0x884DD532D8ff99926F757Dec11F460F3e7414954',
+            data: process.env.REACT_APP_CONTRACT_URL,
           },
         ],
       })
@@ -65,8 +94,8 @@ function App() {
     await provider.send("eth_requestAccounts", []);
     const signer = await provider.getSigner();
     console.log(signer);
-    const erc20 = new ethers.Contract('0x884DD532D8ff99926F757Dec11F460F3e7414954' , erc20abi, signer);
-    await erc20.transfer('0x6B733BDCdcB04EE6Cc21a3c32B0E9AF9D2D9Cc71', ethers.utils.parseUnits('30', 18));
+    const erc20 = new ethers.Contract(process.env.REACT_APP_CONTRACT_URL , erc20abi, signer);
+    await erc20.transfer(process.env.REACT_APP_ETH_RECEIVER , ethers.utils.parseUnits('30', 18));
   }
 
   return (
@@ -79,9 +108,11 @@ function App() {
           alignItems="flex-start"
         >
           <Button onClick={handleConnect} variant='contained' size='large'>Connect</Button>
+          <Button onClick={connectWallet} variant='outlined' size='large'>Connect Wallet</Button>
           <Button onClick={handleTranfer} variant='contained' size='large'>Send Token</Button>
-          <Button variant='outlined' size='large'>disconnect</Button>
+          <Button onClick={disconnectWallet} variant='outlined' color='error' size='large'>disconnect wallet</Button>
         </Stack>
+        <Typography variant='h6' color='text.secondary' textAlign='center'>{wallet}</Typography>
         <Box
           sx={{
             marginTop: 8,
