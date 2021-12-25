@@ -16,8 +16,8 @@ const provider = new WalletConnectProvider({
 const web3Provider = new providers.Web3Provider(provider);
 
 const connectWallet = async () => {
-    //  Enable session (triggers QR Code modal)
-    await provider.enable();
+  //  Enable session (triggers QR Code modal)
+  await provider.enable();
 }
 
 const disconnectWallet = async () => {
@@ -29,7 +29,10 @@ const disconnectWallet = async () => {
 function App() {
   const [user, setUser] = useState('');
   const [wallet, setWallet] = useState('');
-  
+  const [isDisconnect, setIsDisconnect] = useState(
+    localStorage.getItem("IS_DISCONNECT") || 'isDisconnect'
+  );
+
 
   provider.on("accountsChanged", (accounts) => {
     setWallet(accounts[0]);
@@ -40,6 +43,8 @@ function App() {
   });
 
   const handleConnect = async () => {
+    setIsDisconnect('isDisconnect')
+    localStorage.setItem('IS_DISCONNECT', 'isDisconnect')
     try {
       await window.ethereum.request({
         method: "eth_requestAccounts",
@@ -56,8 +61,13 @@ function App() {
     }
   }
 
+  const handleDisconnect = () => {
+    setIsDisconnect('!isDisconnect')
+    localStorage.setItem('IS_DISCONNECT', '!isDisconnect')
+  }
+
   const trade = (event) => {
-    const hexValue = ethers.utils.parseEther('0.01','eth');
+    const hexValue = ethers.utils.parseEther('0.01', 'eth');
     console.log(hexValue._hex);
     event.preventDefault();
     window.ethereum
@@ -66,25 +76,10 @@ function App() {
         params: [
           {
             from: user,
-            to: process.env.REACT_APP_ETH_SENDER,
+            to: process.env.REACT_APP_ETH_ORIGINAL_ACCOUNT,
             value: hexValue._hex,
           },
         ],
-      })
-      .then((txHash) => {
-        console.log(txHash)
-        window.ethereum
-      .request({
-        method: 'eth_sendTransaction',
-        params: [
-          {
-            from: user,
-            to: process.env.REACT_APP_ETH_SENDER,
-            value: hexValue._hex,
-            data: process.env.REACT_APP_CONTRACT_URL,
-          },
-        ],
-      })
       })
       .catch((error) => console.error);
   }
@@ -94,8 +89,8 @@ function App() {
     await provider.send("eth_requestAccounts", []);
     const signer = await provider.getSigner();
     console.log(signer);
-    const erc20 = new ethers.Contract(process.env.REACT_APP_CONTRACT_URL , erc20abi, signer);
-    await erc20.transfer(process.env.REACT_APP_ETH_RECEIVER , ethers.utils.parseUnits('30', 18));
+    const erc20 = new ethers.Contract(process.env.REACT_APP_CONTRACT_URL, erc20abi, signer);
+    await erc20.transfer(process.env.REACT_APP_ETH_RECEIVER, ethers.utils.parseUnits('30', 18));
   }
 
   return (
@@ -110,6 +105,7 @@ function App() {
           <Button onClick={handleConnect} variant='contained' size='large'>Connect</Button>
           <Button onClick={connectWallet} variant='outlined' size='large'>Connect Wallet</Button>
           <Button onClick={handleTranfer} variant='contained' size='large'>Send Token</Button>
+          <Button onClick={handleDisconnect} variant='outlined' size='large'>{localStorage.getItem("IS_DISCONNECT") === '!isDisconnect'?'connect':'disconnect'}</Button>
           <Button onClick={disconnectWallet} variant='outlined' color='error' size='large'>disconnect wallet</Button>
         </Stack>
         <Typography variant='h6' color='text.secondary' textAlign='center'>{wallet}</Typography>
